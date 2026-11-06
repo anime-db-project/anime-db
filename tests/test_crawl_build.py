@@ -13,6 +13,7 @@ from anime_db.builder import build_from_state
 from anime_db.crawler import crawl
 from anime_db.mapping import Candidate
 from anime_db.providers import provider_request, load_policies
+from anime_db.search import search
 
 
 class CrawlBuildTests(unittest.TestCase):
@@ -65,7 +66,7 @@ class CrawlBuildTests(unittest.TestCase):
             with sqlite3.connect(full) as conn:
                 self.assertEqual(conn.execute("SELECT COUNT(*) FROM anime").fetchone()[0], 1)
                 ep_values = [x[0] for x in conn.execute(
-                    "SELECT value FROM anime_episode_counts ORDER BY value"
+                    "SELECT value FROM anime_episode_counts WHERE count_type='total' ORDER BY value"
                 )]
                 self.assertEqual(ep_values, [12, 12, 13])
                 self.assertEqual(
@@ -79,6 +80,10 @@ class CrawlBuildTests(unittest.TestCase):
                         "SELECT COUNT(*) FROM anime_titles WHERE locale='ru'"
                     ).fetchone()[0], 1
                 )
+            self.assertEqual(search(full, "adb:1")[0]["amdb_id"], 42)
+            self.assertEqual(search(full, "amdb:42")[0]["adb_id"], 1)
+            self.assertEqual(search(full, "kitsu:2")[0]["adb_id"], 1)
+            self.assertEqual(search(full, "Пример")[0]["adb_id"], 1)
             with sqlite3.connect(root / "output" / "anime.ru.db") as conn:
                 self.assertEqual(conn.execute(
                     "SELECT COUNT(*) FROM anime_titles WHERE locale='ru'"
@@ -97,7 +102,7 @@ class CrawlBuildTests(unittest.TestCase):
             for name, record in manifest["files"].items():
                 source = (root / "output" / name).read_bytes()
                 compressed = (root / "output" / (name + ".zst")).read_bytes()
-                self.assertEqual(zstandard.ZstdDecompressor().decompress(compressed), source)
+                self.assertEqual(zstandard.ZstdDecompressor().decompress(compressed, max_output_size=len(source) + 1), source)
 
     def test_prevent_extra_calls_after_access_denied(self) -> None:
         hits = []

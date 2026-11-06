@@ -74,6 +74,10 @@ CREATE TABLE anime_titles (
     PRIMARY KEY(anime_id, source_id, locale, title_type, source_field, value)
 ) WITHOUT ROWID;
 CREATE INDEX title_by_locale ON anime_titles(locale, value);
+CREATE VIRTUAL TABLE anime_title_fts USING fts5(
+    value, locale UNINDEXED, adb_id UNINDEXED,
+    tokenize='unicode61 remove_diacritics 2'
+);
 
 CREATE TABLE anime_descriptions (
     anime_id INTEGER NOT NULL REFERENCES anime(anime_id),

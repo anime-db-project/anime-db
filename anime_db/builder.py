@@ -8,6 +8,7 @@ import sqlite3
 import time
 import zlib
 from pathlib import Path
+from contextlib import closing
 from typing import Any
 
 import zstandard
@@ -62,6 +63,14 @@ def finalize_db(conn: sqlite3.Connection) -> None:
     conn.close()
 
 
+def populate_search(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        "INSERT INTO anime_title_fts(value,locale,adb_id) "
+        "SELECT t.value,t.locale,a.adb_id FROM anime_titles AS t "
+        "JOIN anime AS a ON a.anime_id=t.anime_id"
+    )
+
+
 def aggregate(full: sqlite3.Connection, tech: sqlite3.Connection) -> None:
     """Keep all candidate values; only select when a field is unambiguous."""
     for table in ("anime_statuses", "anime_formats", "anime_episode_counts",
@@ -106,7 +115,7 @@ def _clone_catalog(
     source: str | None = None,
     locale: str | None = None,
 ) -> None:
-    with open_db(dst_path) as target:
+    with closing(open_db(dst_path)) as target:
         create_catalog(target, role=role)
         target.execute("ATTACH DATABASE ? AS original", (str(src_path.resolve()),))
         sid = SOURCES.index(source) + 1 if source else None
@@ -151,6 +160,7 @@ def _clone_catalog(
             )
         target.commit()
         target.execute("DETACH DATABASE original")
+        populate_search(target)
         finalize_db(target)
 
 
@@ -161,7 +171,7 @@ def build_from_state(state_dir: Path, output_dir: Path) -> dict:
     tech_path = output_dir / "anime.technical.db"
     images_path = output_dir / "anime.images.db"
     total = 0
-    with open_db(full_path) as full, open_db(tech_path) as tech:
+    with closing(open_db(full_path)) as full, closing(open_db(tech_path)) as tech:
         create_catalog(full, role="full")
         create_technical(tech)
         snapshots = sorted((state_dir / "snapshots").glob("*/*.json.zlib"))
@@ -195,6 +205,7 @@ def build_from_state(state_dir: Path, output_dir: Path) -> dict:
                      int(event["elapsed_ms"]), str(event.get("error", "")), event["at"]),
                 )
         aggregate(full, tech)
+        populate_search(full)
         full.commit()
         tech.commit()
         titles = full.execute("SELECT COUNT(*) FROM anime").fetchone()[0]
@@ -203,7 +214,7 @@ def build_from_state(state_dir: Path, output_dir: Path) -> dict:
         ).fetchone()[0]
         finalize_db(full)
         finalize_db(tech)
-    with open_db(images_path) as images:
+    with closing(open_db(images_path)) as images:
         create_images(images)
         finalize_db(images)
 

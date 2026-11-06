@@ -25,7 +25,7 @@ def url(value: Any) -> str:
 
 def normalized_locale(value: str) -> str:
     lang = plain(value).replace("_", "-").lower()
-    return {"en-jp": "ja-Latn", "ja-jp": "ja", "en-us": "en"}.get(lang, lang or "und")
+    return {"en-jp": "ja-Latn", "ja-latn": "ja-Latn", "ja-jp": "ja", "en-us": "en"}.get(lang, lang or "und")
 
 
 def fuzzy_date(obj: dict[str, Any] | None) -> tuple[str, str] | None:

@@ -10,6 +10,7 @@ from anime_db.builder import build_from_state
 from anime_db.crawler import crawl
 from anime_db.identity import IdentityRegistry
 from anime_db.mapping import read_candidates
+from anime_db.search import search
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -24,7 +25,14 @@ def main(argv: list[str] | None = None) -> int:
     build = sub.add_parser("build", help="Build databases from saved snapshots offline")
     build.add_argument("--state-dir", type=Path, default=Path(".state"))
     build.add_argument("--output-dir", type=Path, default=Path("artifacts"))
+    lookup = sub.add_parser("search", help="Search a released database offline")
+    lookup.add_argument("query", help="ADB/AMDB/provider ID or anime title")
+    lookup.add_argument("--db", type=Path, default=Path("artifacts/anime.db"))
+    lookup.add_argument("--limit", type=int, default=20)
     args = parser.parse_args(argv)
+    if args.command == "search":
+        print(json.dumps(search(args.db, args.query, limit=args.limit), ensure_ascii=False, indent=2))
+        return 0
     if args.command == "run":
         if not 1 <= args.max_requests <= 10:
             parser.error("Test phase permits only 1–10 requests per source")
