@@ -1,0 +1,46 @@
+{
+  "phase": "test",
+  "hard_cap_per_source": 10,
+  "shikimori": {
+    "enabled": true,
+    "max_requests": 10,
+    "per_second": 1,
+    "per_minute": 30,
+    "per_hour": 600,
+    "delay_seconds": [
+      1,
+      1.5
+    ],
+    "retry_429_wait_seconds": 15,
+    "max_429_wait_seconds": 45,
+    "timeout_seconds": 18
+  },
+  "kitsu": {
+    "enabled": true,
+    "max_requests": 10,
+    "per_second": 1,
+    "per_minute": 30,
+    "per_hour": 600,
+    "delay_seconds": [
+      1,
+      1.5
+    ],
+    "retry_429_wait_seconds": 15,
+    "max_429_wait_seconds": 45,
+    "timeout_seconds": 18
+  },
+  "anilist": {
+    "enabled": true,
+    "max_requests": 10,
+    "per_second": 1,
+    "per_minute": 25,
+    "per_hour": 500,
+    "delay_seconds": [
+      1.1,
+      1.8
+    ],
+    "retry_429_wait_seconds": 20,
+    "max_429_wait_seconds": 45,
+    "timeout_seconds": 18
+  }
+}

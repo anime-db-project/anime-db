@@ -1,0 +1,114 @@
+name: Database test build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "anime_db/**"
+      - "config/sources.json"
+      - "pyproject.toml"
+      - ".github/workflows/build.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: anime-db-test-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install project
+        run: python -m pip install -e .
+      - name: Restore durable identity registry and API snapshots
+        shell: bash
+        run: |
+          git fetch --no-tags --depth=1 origin state:refs/remotes/origin/state
+          if git cat-file -e origin/state:.state/registry.json 2>/dev/null; then
+            git archive origin/state .state | tar -xf -
+          fi
+      - name: Download read-only mapping reference
+        shell: bash
+        run: |
+          mkdir -p inputs
+          curl --fail --location --retry 3 --retry-delay 3 \
+            -o inputs/mappings.db.zst \
+            https://github.com/anime-db-project/anime-mapping-db/releases/latest/download/mappings.db.zst
+          python - <<'PY'
+          from pathlib import Path
+          import zstandard
+          with Path('inputs/mappings.db.zst').open('rb') as src, Path('inputs/mappings.db').open('wb') as dst:
+              zstandard.ZstdDecompressor().copy_stream(src, dst)
+          PY
+      - name: Run bounded test crawl and build
+        run: |
+          anime-db run --mapping-db inputs/mappings.db \
+            --state-dir .state --output-dir artifacts \
+            --max-requests 10 --candidates 80
+      - name: Verify artifact checksums and database integrity
+        shell: bash
+        run: |
+          (cd artifacts && sha256sum -c SHA256SUMS)
+          python - <<'PY'
+          from pathlib import Path
+          import sqlite3
+          for path in sorted(Path('artifacts').glob('*.db')):
+              with sqlite3.connect(path) as db:
+                  assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
+                  assert not db.execute('PRAGMA foreign_key_check').fetchall()
+          print('All SQLite files verified')
+          PY
+      - name: Upload all test databases
+        uses: actions/upload-artifact@v4
+        with:
+          name: anime-db-test-${{ github.run_id }}
+          path: |
+            artifacts/*.db
+            artifacts/*.db.zst
+            artifacts/manifest.json
+            artifacts/SHA256SUMS
+            .state/last-crawl-report.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Persist stable identity registry and source snapshots
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --no-tags origin state:refs/remotes/origin/state
+          git switch -C state origin/state
+          git add -f .state/registry.json .state/last-crawl-report.json
+          if [[ -d .state/snapshots ]]; then
+            git add -f .state/snapshots
+          fi
+          if ! git diff --cached --quiet; then
+            git commit -m "data: persist bounded crawler state [skip ci]"
+            git push origin HEAD:state
+          else
+            echo "No state changes"
+          fi
+      - name: Job summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f artifacts/manifest.json ]]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          m = json.loads(Path('artifacts/manifest.json').read_text())
+          print('## anime-db test build')
+          print(f"- Anime: {m['anime']}")
+          print(f"- Snapshots: {m['snapshots']}")
+          print(f"- Conflicts: {m['conflicts']}")
+          print(f"- SQLite outputs: {len(m['files'])}")
+          print('- Releases: disabled')
+          PY
+          fi

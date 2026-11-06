@@ -1,0 +1,15 @@
+# INACTIVE TEMPLATE. GitHub Actions ignores .yml.disabled files.
+# Rename to release.yml and explicitly enable only after user approval.
+name: Build anime-db release
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    if: false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release disabled
+        run: echo 'Release deliberately disabled during schema testing'
