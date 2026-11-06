@@ -1,0 +1,303 @@
+{
+  "started_at": "2026-11-06T20:52:23.040982+00:00",
+  "sources": {
+    "shikimori": {
+      "status": "complete",
+      "attempted": 10,
+      "found": 10,
+      "cached": 0,
+      "missing": 0,
+      "errors": 0
+    },
+    "kitsu": {
+      "status": "complete",
+      "attempted": 10,
+      "found": 10,
+      "cached": 0,
+      "missing": 0,
+      "errors": 0
+    },
+    "anilist": {
+      "status": "complete",
+      "attempted": 10,
+      "found": 10,
+      "cached": 0,
+      "missing": 0,
+      "errors": 0
+    }
+  },
+  "requests": [
+    {
+      "source": "shikimori",
+      "id": "160",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 616,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:23.657816+00:00"
+    },
+    {
+      "source": "shikimori",
+      "id": "1060",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 669,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:24.328069+00:00"
+    },
+    {
+      "source": "shikimori",
+      "id": "6571",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1301,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:25.630512+00:00"
+    },
+    {
+      "source": "shikimori",
+      "id": "6075",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1356,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:26.988265+00:00"
+    },
+    {
+      "source": "shikimori",
+      "id": "2245",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1257,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:28.246617+00:00"
+    },
+    {
+      "source": "shikimori",
+      "id": "2522",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1475,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:29.722930+00:00"
+    },
+    {
+      "source": "shikimori",
+      "id": "9154",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1042,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:30.765936+00:00"
+    },
+    {
+      "source": "shikimori",
+      "id": "1618",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1107,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:31.874446+00:00"
+    },
+    {
+      "source": "shikimori",
+      "id": "375",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1213,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:33.089125+00:00"
+    },
+    {
+      "source": "shikimori",
+      "id": "55",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1462,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:34.552618+00:00"
+    },
+    {
+      "source": "kitsu",
+      "id": "138",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 288,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:34.842634+00:00"
+    },
+    {
+      "source": "kitsu",
+      "id": "949",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1169,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:36.012753+00:00"
+    },
+    {
+      "source": "kitsu",
+      "id": "4615",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1132,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:37.146504+00:00"
+    },
+    {
+      "source": "kitsu",
+      "id": "4415",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1363,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:38.510763+00:00"
+    },
+    {
+      "source": "kitsu",
+      "id": "2034",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1100,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:39.612255+00:00"
+    },
+    {
+      "source": "kitsu",
+      "id": "2287",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1456,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:41.070166+00:00"
+    },
+    {
+      "source": "kitsu",
+      "id": "5615",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1391,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:42.463096+00:00"
+    },
+    {
+      "source": "kitsu",
+      "id": "1453",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1351,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:43.815885+00:00"
+    },
+    {
+      "source": "kitsu",
+      "id": "342",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1439,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:45.256320+00:00"
+    },
+    {
+      "source": "kitsu",
+      "id": "36",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1231,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:46.488913+00:00"
+    },
+    {
+      "source": "anilist",
+      "id": "160",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 189,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:46.679885+00:00"
+    },
+    {
+      "source": "anilist",
+      "id": "1060",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1467,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:48.148513+00:00"
+    },
+    {
+      "source": "anilist",
+      "id": "6571",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1225,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:49.375450+00:00"
+    },
+    {
+      "source": "anilist",
+      "id": "6075",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1109,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:50.485532+00:00"
+    },
+    {
+      "source": "anilist",
+      "id": "2245",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1750,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:52.237269+00:00"
+    },
+    {
+      "source": "anilist",
+      "id": "2522",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1439,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:53.677997+00:00"
+    },
+    {
+      "source": "anilist",
+      "id": "9154",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1516,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:55.195432+00:00"
+    },
+    {
+      "source": "anilist",
+      "id": "1618",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1192,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:56.388907+00:00"
+    },
+    {
+      "source": "anilist",
+      "id": "375",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1208,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:57.598881+00:00"
+    },
+    {
+      "source": "anilist",
+      "id": "55",
+      "status": 200,
+      "error": "",
+      "elapsed_ms": 1115,
+      "used_requests": 1,
+      "at": "2026-11-06T20:52:58.716128+00:00"
+    }
+  ],
+  "phase": "test",
+  "completed_at": "2026-11-06T20:52:58.717694+00:00"
+}
