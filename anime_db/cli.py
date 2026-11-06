@@ -31,7 +31,13 @@ def main(argv: list[str] | None = None) -> int:
     lookup.add_argument("--limit", type=int, default=20)
     args = parser.parse_args(argv)
     if args.command == "search":
-        print(json.dumps(search(args.db, args.query, limit=args.limit), ensure_ascii=False, indent=2))
+        print(
+            json.dumps(
+                search(args.db, args.query, limit=args.limit),
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         return 0
     if args.command == "run":
         if not 1 <= args.max_requests <= 10:
@@ -41,7 +47,9 @@ def main(argv: list[str] | None = None) -> int:
         registry = IdentityRegistry.load(args.state_dir / "registry.json")
         candidates = read_candidates(args.mapping_db, args.candidates)
         report = crawl(
-            candidates, args.state_dir, registry=registry,
+            candidates,
+            args.state_dir,
+            registry=registry,
             max_requests=args.max_requests,
         )
         print(json.dumps({"crawl": report["sources"]}, ensure_ascii=False))

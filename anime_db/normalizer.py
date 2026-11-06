@@ -25,7 +25,9 @@ def url(value: Any) -> str:
 
 def normalized_locale(value: str) -> str:
     lang = plain(value).replace("_", "-").lower()
-    return {"en-jp": "ja-Latn", "ja-latn": "ja-Latn", "ja-jp": "ja", "en-us": "en"}.get(lang, lang or "und")
+    return {"en-jp": "ja-Latn", "ja-latn": "ja-Latn", "ja-jp": "ja", "en-us": "en"}.get(
+        lang, lang or "und"
+    )
 
 
 def fuzzy_date(obj: dict[str, Any] | None) -> tuple[str, str] | None:
@@ -36,7 +38,9 @@ def fuzzy_date(obj: dict[str, Any] | None) -> tuple[str, str] | None:
         parts.append(str(obj["month"]).zfill(2))
     if obj.get("day") and len(parts) == 2:
         parts.append(str(obj["day"]).zfill(2))
-    return "-".join(parts), ("day" if len(parts) == 3 else "month" if len(parts) == 2 else "year")
+    return "-".join(parts), (
+        "day" if len(parts) == 3 else "month" if len(parts) == 2 else "year"
+    )
 
 
 def ingest_record(conn: sqlite3.Connection, item: dict) -> int:
@@ -54,7 +58,9 @@ def ingest_record(conn: sqlite3.Connection, item: dict) -> int:
         "UPDATE anime SET amdb_id=COALESCE(amdb_id, ?) WHERE adb_id=?",
         (amdb_id, adb_id),
     )
-    row = conn.execute("SELECT anime_id FROM anime WHERE adb_id=?", (adb_id,)).fetchone()
+    row = conn.execute(
+        "SELECT anime_id FROM anime WHERE adb_id=?", (adb_id,)
+    ).fetchone()
     if row is None:
         raise ValueError("ADB ID insertion failed")
     anime_id = int(row[0])
@@ -84,16 +90,22 @@ def ingest_record(conn: sqlite3.Connection, item: dict) -> int:
         val = plain(value)
         if val:
             insert(
-                "anime_titles", locale=normalized_locale(locale),
-                title_type=role, source_field=field, value=val,
+                "anime_titles",
+                locale=normalized_locale(locale),
+                title_type=role,
+                source_field=field,
+                value=val,
             )
 
     def description(locale: str, role: str, field: str, value: Any) -> None:
         val = plain(value)
         if val:
             insert(
-                "anime_descriptions", locale=normalized_locale(locale),
-                description_type=role, source_field=field, value=val,
+                "anime_descriptions",
+                locale=normalized_locale(locale),
+                description_type=role,
+                source_field=field,
+                value=val,
             )
 
     def enum(table: str, field: str, value: Any) -> None:
@@ -102,12 +114,20 @@ def ingest_record(conn: sqlite3.Connection, item: dict) -> int:
             insert(table, **{field: val})
 
     def episodes(kind: str, value: Any) -> None:
-        if value is not None and isinstance(value, (int, float)) and not isinstance(value, bool):
+        if (
+            value is not None
+            and isinstance(value, (int, float))
+            and not isinstance(value, bool)
+        ):
             if int(value) >= 0:
                 insert("anime_episode_counts", count_type=kind, value=int(value))
 
     def duration(kind: str, value: Any, unit: int) -> None:
-        if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= 0:
+        if (
+            isinstance(value, (int, float))
+            and not isinstance(value, bool)
+            and value >= 0
+        ):
             insert("anime_durations", duration_type=kind, seconds=int(value * unit))
 
     def score(kind: str, value: Any, scale: float) -> None:
@@ -127,11 +147,15 @@ def ingest_record(conn: sqlite3.Connection, item: dict) -> int:
         if isinstance(value, dict):
             parts = fuzzy_date(value)
             if parts:
-                insert("anime_dates", date_type=kind, value=parts[0], precision=parts[1])
+                insert(
+                    "anime_dates", date_type=kind, value=parts[0], precision=parts[1]
+                )
         elif plain(value):
             text = plain(value)
             insert(
-                "anime_dates", date_type=kind, value=text,
+                "anime_dates",
+                date_type=kind,
+                value=text,
                 precision="day" if len(text) >= 10 else "unknown",
             )
 
@@ -145,23 +169,44 @@ def ingest_record(conn: sqlite3.Connection, item: dict) -> int:
         if isinstance(value, dict):
             for size, link in value.items():
                 if url(link):
-                    insert("anime_images", image_type=f"{image_type}.{size}", url=url(link), width=None, height=None)
+                    insert(
+                        "anime_images",
+                        image_type=f"{image_type}.{size}",
+                        url=url(link),
+                        width=None,
+                        height=None,
+                    )
         elif url(value):
-            insert("anime_images", image_type=image_type, url=url(value), width=None, height=None)
+            insert(
+                "anime_images",
+                image_type=image_type,
+                url=url(value),
+                width=None,
+                height=None,
+            )
 
     def studio(name: str, ext: str, role: str) -> None:
         if name:
-            insert("anime_studios", name=name, studio_external_id=ext or name, studio_role=role)
+            insert(
+                "anime_studios",
+                name=name,
+                studio_external_id=ext or name,
+                studio_role=role,
+            )
 
     def person(table: str, ext: str, name: str, role: str, node: Any) -> None:
         if not ext and not name:
             return
         fields = (
             {"character_external_id": ext or name}
-            if table == "anime_characters" else {"person_external_id": ext or name}
+            if table == "anime_characters"
+            else {"person_external_id": ext or name}
         )
         insert(
-            table, **fields, name=name, role=role,
+            table,
+            **fields,
+            name=name,
+            role=role,
             details_json=compact(node) if node else None,
         )
 
@@ -177,6 +222,7 @@ def ingest_record(conn: sqlite3.Connection, item: dict) -> int:
         attrs = {}
 
     used = set()
+
     def get(field: str) -> Any:
         used.add(field)
         return attrs.get(field)
@@ -208,7 +254,12 @@ def ingest_record(conn: sqlite3.Connection, item: dict) -> int:
         image("image", get("image"))
         for node in get("videos") or []:
             if isinstance(node, dict) and url(node.get("url")):
-                insert("anime_videos", video_type=plain(node.get("kind")) or "video", url=url(node["url"]), title=plain(node.get("name")))
+                insert(
+                    "anime_videos",
+                    video_type=plain(node.get("kind")) or "video",
+                    url=url(node["url"]),
+                    title=plain(node.get("name")),
+                )
         link("shikimori", get("url"))
     elif source == "kitsu":
         titles = get("titles") or {}
@@ -227,20 +278,41 @@ def ingest_record(conn: sqlite3.Connection, item: dict) -> int:
         date("aired_start", get("startDate"))
         date("aired_end", get("endDate"))
         score("average", get("averageRating"), 100)
-        for k in ("userCount", "favoritesCount", "popularityRank", "ratingRank", "trendingRank"):
+        for k in (
+            "userCount",
+            "favoritesCount",
+            "popularityRank",
+            "ratingRank",
+            "trendingRank",
+        ):
             metric(k, get(k))
         image("poster", get("posterImage"))
         image("cover", get("coverImage"))
         if get("youtubeVideoId"):
             token = plain(attrs["youtubeVideoId"])
             if token and all(c.isalnum() or c in "_-" for c in token):
-                insert("anime_videos", video_type="trailer", url="https://www.youtube.com/watch?v=" + token, title="")
+                insert(
+                    "anime_videos",
+                    video_type="trailer",
+                    url="https://www.youtube.com/watch?v=" + token,
+                    title="",
+                )
         link("kitsu", f"https://kitsu.io/anime/{plain(data.get('id'))}")
     elif source == "anilist":
         names = get("title") or {}
         if isinstance(names, dict):
-            for locale, field in (("ja-Latn", "romaji"), ("en", "english"), ("ja", "native"), ("und", "userPreferred")):
-                title(locale, "native" if field == "native" else "localized", f"title.{field}", names.get(field))
+            for locale, field in (
+                ("ja-Latn", "romaji"),
+                ("en", "english"),
+                ("ja", "native"),
+                ("und", "userPreferred"),
+            ):
+                title(
+                    locale,
+                    "native" if field == "native" else "localized",
+                    f"title.{field}",
+                    names.get(field),
+                )
         for alias in get("synonyms") or []:
             title("und", "alias", "synonyms", alias)
         description("en", "synopsis", "description", get("description"))
@@ -258,31 +330,52 @@ def ingest_record(conn: sqlite3.Connection, item: dict) -> int:
         for tag in get("tags") or []:
             if isinstance(tag, dict) and tag.get("name"):
                 insert(
-                    "anime_tags", tag=str(tag["name"]),
-                    rank=tag.get("rank"), is_spoiler=int(bool(tag.get("isMediaSpoiler"))),
+                    "anime_tags",
+                    tag=str(tag["name"]),
+                    rank=tag.get("rank"),
+                    is_spoiler=int(bool(tag.get("isMediaSpoiler"))),
                 )
         studies = get("studios") or {}
         for edge in studies.get("edges") or [] if isinstance(studies, dict) else []:
             node = (edge or {}).get("node") or {}
             if node.get("name"):
-                studio(str(node["name"]), str(node.get("id") or ""), "main" if edge.get("isMain") else "other")
-        for kind, table in (("characters", "anime_characters"), ("staff", "anime_staff")):
+                studio(
+                    str(node["name"]),
+                    str(node.get("id") or ""),
+                    "main" if edge.get("isMain") else "other",
+                )
+        for kind, table in (
+            ("characters", "anime_characters"),
+            ("staff", "anime_staff"),
+        ):
             group = get(kind) or {}
             for edge in group.get("edges") or [] if isinstance(group, dict) else []:
                 node = (edge or {}).get("node") or {}
                 names = node.get("name") or {}
-                person(table, str(node.get("id") or ""), plain(names.get("full") if isinstance(names, dict) else names), plain(edge.get("role")), node)
+                person(
+                    table,
+                    str(node.get("id") or ""),
+                    plain(names.get("full") if isinstance(names, dict) else names),
+                    plain(edge.get("role")),
+                    node,
+                )
         rel = get("relations") or {}
         for edge in rel.get("edges") or [] if isinstance(rel, dict) else []:
             node = (edge or {}).get("node") or {}
             if node.get("id"):
-                insert("anime_relations", relation_type=plain(edge.get("relationType")) or "unknown", target_external_id=str(node["id"]), target_adb_id=None)
+                insert(
+                    "anime_relations",
+                    relation_type=plain(edge.get("relationType")) or "unknown",
+                    target_external_id=str(node["id"]),
+                    target_adb_id=None,
+                )
         image("poster", get("coverImage"))
         image("banner", get("bannerImage"))
         trailer = get("trailer") or {}
         if isinstance(trailer, dict) and trailer.get("id") and trailer.get("site"):
             insert(
-                "anime_videos", video_type="trailer",
+                "anime_videos",
+                video_type="trailer",
                 url=f"https://{plain(trailer['site']).lower()}.com/watch?v={plain(trailer['id'])}",
                 title="",
             )
@@ -295,9 +388,15 @@ def ingest_record(conn: sqlite3.Connection, item: dict) -> int:
     # even when no semantic adapter for them exists yet.
     for field, value in attrs.items():
         if field not in used:
-            insert("anime_source_attributes", field_path=field, value_json=compact(value))
+            insert(
+                "anime_source_attributes", field_path=field, value_json=compact(value)
+            )
     if source == "kitsu":
         for field, value in data.items():
             if field != "attributes":
-                insert("anime_source_attributes", field_path="resource." + field, value_json=compact(value))
+                insert(
+                    "anime_source_attributes",
+                    field_path="resource." + field,
+                    value_json=compact(value),
+                )
     return anime_id

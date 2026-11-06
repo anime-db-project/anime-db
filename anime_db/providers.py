@@ -77,11 +77,15 @@ class SourcePolicy:
             raise ValueError(f"{source}: enabled must be boolean")
         if not (1 <= policy.max_requests <= cap <= 10):
             raise ValueError(f"{source}: test-phase hard cap is 10 HTTP calls")
-        if not all(v >= 1 for v in (policy.per_second, policy.per_minute, policy.per_hour)):
+        if not all(
+            v >= 1 for v in (policy.per_second, policy.per_minute, policy.per_hour)
+        ):
             raise ValueError(f"{source}: rate windows must be positive")
         if not (0 <= lo <= hi <= 10):
             raise ValueError(f"{source}: invalid jitter")
-        if not (0 <= policy.retry_429_wait_seconds <= policy.max_429_wait_seconds <= 60):
+        if not (
+            0 <= policy.retry_429_wait_seconds <= policy.max_429_wait_seconds <= 60
+        ):
             raise ValueError(f"{source}: retry window invalid")
         if not 1 <= policy.timeout_seconds <= 60:
             raise ValueError(f"{source}: invalid timeout")
@@ -94,9 +98,7 @@ def load_policies(path: Path = CONFIG_FILE) -> dict[str, SourcePolicy]:
         raise ValueError("Only explicit test phase with cap 10 is enabled")
     if set(raw) != set(SOURCES) | {"phase", "hard_cap_per_source"}:
         raise ValueError("Unknown or missing source policies")
-    return {
-        name: SourcePolicy.from_config(name, raw[name], 10) for name in SOURCES
-    }
+    return {name: SourcePolicy.from_config(name, raw[name], 10) for name in SOURCES}
 
 
 class RateGate:
@@ -134,23 +136,30 @@ class RateGate:
         self.previous = now
 
 
-def provider_request(source: str, external_id: str) -> tuple[str, str, dict | None, dict]:
+def provider_request(
+    source: str, external_id: str
+) -> tuple[str, str, dict | None, dict]:
     """Only fixed, allowlisted HTTPS endpoints. No untrusted URLs."""
     if not external_id.isdecimal() or int(external_id) < 1:
         raise ValueError("Provider IDs must be positive integers")
     if source == "shikimori":
         return (
-            "GET", f"https://shikimori.one/api/animes/{quote(external_id)}",
-            None, {"Accept": "application/json"},
+            "GET",
+            f"https://shikimori.io/api/animes/{quote(external_id)}",
+            None,
+            {"Accept": "application/json"},
         )
     if source == "kitsu":
         return (
-            "GET", f"https://kitsu.io/api/edge/anime/{quote(external_id)}",
-            None, {"Accept": "application/vnd.api+json"},
+            "GET",
+            f"https://kitsu.io/api/edge/anime/{quote(external_id)}",
+            None,
+            {"Accept": "application/vnd.api+json"},
         )
     if source == "anilist":
         return (
-            "POST", "https://graphql.anilist.co",
+            "POST",
+            "https://graphql.anilist.co",
             {"query": ANILIST_QUERY, "variables": {"id": int(external_id)}},
             {"Accept": "application/json"},
         )
@@ -173,7 +182,10 @@ def fetch_one(
         budget[0] -= 1
         try:
             response = client.request(
-                method, url, json=payload, headers=headers,
+                method,
+                url,
+                json=payload,
+                headers=headers,
                 timeout=policy.timeout_seconds,
             )
         except httpx.TransportError as exc:
@@ -182,7 +194,9 @@ def fetch_one(
         if status == 429:
             retry_after = response.headers.get("retry-after", "").strip()
             try:
-                wait = float(retry_after) if retry_after else policy.retry_429_wait_seconds
+                wait = (
+                    float(retry_after) if retry_after else policy.retry_429_wait_seconds
+                )
             except ValueError:
                 wait = policy.retry_429_wait_seconds
             if retried_429 or wait > policy.max_429_wait_seconds or budget[0] == 0:

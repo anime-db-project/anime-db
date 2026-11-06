@@ -20,10 +20,21 @@ from anime_db.schema import LOCALES, SCALAR_FIELDS, SCHEMA_VERSION, create_catal
 from anime_db.schema import create_images, create_technical
 
 CATALOG_TABLES = (
-    "anime_external_ids", "anime_sources", "anime_titles", "anime_descriptions",
-    "anime_genres", "anime_tags", "anime_studios", "anime_characters",
-    "anime_staff", "anime_relations", "anime_episodes", "anime_images",
-    "anime_videos", "anime_links", "anime_source_attributes",
+    "anime_external_ids",
+    "anime_sources",
+    "anime_titles",
+    "anime_descriptions",
+    "anime_genres",
+    "anime_tags",
+    "anime_studios",
+    "anime_characters",
+    "anime_staff",
+    "anime_relations",
+    "anime_episodes",
+    "anime_images",
+    "anime_videos",
+    "anime_links",
+    "anime_source_attributes",
     *SCALAR_FIELDS,
 )
 
@@ -73,8 +84,15 @@ def populate_search(conn: sqlite3.Connection) -> None:
 
 def aggregate(full: sqlite3.Connection, tech: sqlite3.Connection) -> None:
     """Keep all candidate values; only select when a field is unambiguous."""
-    for table in ("anime_statuses", "anime_formats", "anime_episode_counts",
-                  "anime_durations", "anime_dates", "anime_scores", "anime_statistics"):
+    for table in (
+        "anime_statuses",
+        "anime_formats",
+        "anime_episode_counts",
+        "anime_durations",
+        "anime_dates",
+        "anime_scores",
+        "anime_statistics",
+    ):
         columns = [entry[1] for entry in full.execute(f"PRAGMA table_info({table})")]
         payload_cols = [x for x in columns if x not in ("anime_id", "source_id")]
         selected = ", ".join(payload_cols)
@@ -84,26 +102,40 @@ def aggregate(full: sqlite3.Connection, tech: sqlite3.Connection) -> None:
         groups: dict[tuple[int, str], list[dict[str, Any]]] = {}
         for row in rows:
             anime_id, source_id, *values = row
-            kind = str(values[0]) if table not in ("anime_statuses", "anime_formats") else ""
+            kind = (
+                str(values[0])
+                if table not in ("anime_statuses", "anime_formats")
+                else ""
+            )
             field_name = f"{table}.{kind}" if kind else table
             obj = dict(zip(payload_cols, values))
-            groups.setdefault((int(anime_id), field_name), []).append({
-                "source_id": source_id, "value": obj
-            })
+            groups.setdefault((int(anime_id), field_name), []).append(
+                {"source_id": source_id, "value": obj}
+            )
         for (anime_id, field_name), candidates in groups.items():
             values = {compact(c["value"]): c["value"] for c in candidates}
             conflict = len(values) > 1
-            selected_value = compact(next(iter(values.values()))) if not conflict else None
+            selected_value = (
+                compact(next(iter(values.values()))) if not conflict else None
+            )
             full.execute(
                 "INSERT INTO aggregation_summary(anime_id,field_name,distinct_values,selected_json,has_conflict) "
                 "VALUES(?,?,?,?,?)",
                 (anime_id, field_name, len(values), selected_value, int(conflict)),
             )
-            adb_id = full.execute("SELECT adb_id FROM anime WHERE anime_id=?", (anime_id,)).fetchone()[0]
+            adb_id = full.execute(
+                "SELECT adb_id FROM anime WHERE anime_id=?", (anime_id,)
+            ).fetchone()[0]
             tech.execute(
                 "INSERT INTO aggregation_decisions(adb_id,field_name,value_json,conflict,candidates_json) "
                 "VALUES(?,?,?,?,?)",
-                (adb_id, field_name, selected_value, int(conflict), compact(candidates)),
+                (
+                    adb_id,
+                    field_name,
+                    selected_value,
+                    int(conflict),
+                    compact(candidates),
+                ),
             )
 
 
@@ -124,12 +156,17 @@ def _clone_catalog(
             target.execute(
                 "INSERT INTO anime SELECT a.* FROM original.anime AS a "
                 "WHERE EXISTS (SELECT 1 FROM original.anime_sources AS s "
-                "WHERE s.anime_id=a.anime_id AND s.source_id=?)", (sid,),
+                "WHERE s.anime_id=a.anime_id AND s.source_id=?)",
+                (sid,),
             )
         else:
             target.execute("INSERT INTO anime SELECT * FROM original.anime")
-        target.execute("INSERT OR IGNORE INTO id_redirects SELECT * FROM original.id_redirects")
-        target.execute("INSERT OR IGNORE INTO amdb_redirects SELECT * FROM original.amdb_redirects")
+        target.execute(
+            "INSERT OR IGNORE INTO id_redirects SELECT * FROM original.id_redirects"
+        )
+        target.execute(
+            "INSERT OR IGNORE INTO amdb_redirects SELECT * FROM original.amdb_redirects"
+        )
         target.execute(
             "INSERT INTO anime_external_ids SELECT e.* FROM original.anime_external_ids AS e "
             "WHERE e.anime_id IN (SELECT anime_id FROM anime)"
@@ -190,8 +227,14 @@ def build_from_state(state_dir: Path, output_dir: Path) -> dict:
             tech.execute(
                 "INSERT INTO raw_snapshots(source_key,external_id,adb_id,sha256,fetched_at,raw_zlib) "
                 "VALUES(?,?,?,?,?,?)",
-                (item["source"], item["source_external_id"], item["adb_id"],
-                 hashlib.sha256(raw).hexdigest(), item["fetched_at"], zlib.compress(raw, 9)),
+                (
+                    item["source"],
+                    item["source_external_id"],
+                    item["adb_id"],
+                    hashlib.sha256(raw).hexdigest(),
+                    item["fetched_at"],
+                    zlib.compress(raw, 9),
+                ),
             )
             total += 1
         crawl_report = state_dir / "last-crawl-report.json"
@@ -201,8 +244,14 @@ def build_from_state(state_dir: Path, output_dir: Path) -> dict:
                 tech.execute(
                     "INSERT INTO request_log(source_key,external_id,status_code,elapsed_ms,detail,recorded_at) "
                     "VALUES(?,?,?,?,?,?)",
-                    (event["source"], str(event["id"]), int(event["status"]),
-                     int(event["elapsed_ms"]), str(event.get("error", "")), event["at"]),
+                    (
+                        event["source"],
+                        str(event["id"]),
+                        int(event["status"]),
+                        int(event["elapsed_ms"]),
+                        str(event.get("error", "")),
+                        event["at"],
+                    ),
                 )
         aggregate(full, tech)
         populate_search(full)
@@ -220,13 +269,17 @@ def build_from_state(state_dir: Path, output_dir: Path) -> dict:
 
     for lang in LOCALES:
         _clone_catalog(
-            full_path, output_dir / f"anime.{lang}.db",
-            role=f"language:{lang}", locale=lang,
+            full_path,
+            output_dir / f"anime.{lang}.db",
+            role=f"language:{lang}",
+            locale=lang,
         )
     for source in SOURCES:
         _clone_catalog(
-            full_path, output_dir / f"anime.{source}.db",
-            role=f"source:{source}", source=source,
+            full_path,
+            output_dir / f"anime.{source}.db",
+            role=f"source:{source}",
+            source=source,
         )
 
     entries = {}
@@ -259,7 +312,8 @@ def build_from_state(state_dir: Path, output_dir: Path) -> dict:
     )
     sums = [
         f"{hash_file(path)}  {path.name}"
-        for path in sorted(output_dir.iterdir()) if path.is_file() and path.name != "SHA256SUMS"
+        for path in sorted(output_dir.iterdir())
+        if path.is_file() and path.name != "SHA256SUMS"
     ]
     (output_dir / "SHA256SUMS").write_text("\n".join(sums) + "\n", "utf-8")
     return manifest

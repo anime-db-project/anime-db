@@ -13,10 +13,22 @@ SOURCES = ("shikimori", "kitsu", "anilist")
 SCALAR_FIELDS = {
     "anime_statuses": ("status TEXT NOT NULL", "status"),
     "anime_formats": ("format TEXT NOT NULL", "format"),
-    "anime_episode_counts": ("count_type TEXT NOT NULL, value INTEGER NOT NULL", "count_type, value"),
-    "anime_durations": ("duration_type TEXT NOT NULL, seconds INTEGER NOT NULL", "duration_type, seconds"),
-    "anime_dates": ("date_type TEXT NOT NULL, value TEXT NOT NULL, precision TEXT NOT NULL", "date_type, value, precision"),
-    "anime_scores": ("score_type TEXT NOT NULL, value REAL NOT NULL, scale REAL NOT NULL", "score_type, value, scale"),
+    "anime_episode_counts": (
+        "count_type TEXT NOT NULL, value INTEGER NOT NULL",
+        "count_type, value",
+    ),
+    "anime_durations": (
+        "duration_type TEXT NOT NULL, seconds INTEGER NOT NULL",
+        "duration_type, seconds",
+    ),
+    "anime_dates": (
+        "date_type TEXT NOT NULL, value TEXT NOT NULL, precision TEXT NOT NULL",
+        "date_type, value, precision",
+    ),
+    "anime_scores": (
+        "score_type TEXT NOT NULL, value REAL NOT NULL, scale REAL NOT NULL",
+        "score_type, value, scale",
+    ),
     "anime_statistics": ("metric TEXT NOT NULL, value REAL NOT NULL", "metric, value"),
 }
 

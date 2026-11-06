@@ -32,29 +32,46 @@ def search(path: Path, query: str, *, limit: int = 20) -> list[dict]:
         elif query.startswith("amdb:") and query[5:].isdigit():
             sql = base + " WHERE a.amdb_id=? LIMIT ?"
             params = (int(query[5:]), limit)
-        elif ":" in query and query.split(":", 1)[0] in ("shikimori", "kitsu", "anilist", "mal"):
+        elif ":" in query and query.split(":", 1)[0] in (
+            "shikimori",
+            "kitsu",
+            "anilist",
+            "mal",
+        ):
             provider, native = query.split(":", 1)
-            sql = base + """
+            sql = (
+                base
+                + """
                 JOIN anime_external_ids AS e ON e.anime_id=a.anime_id
                 JOIN source_catalog AS s ON s.source_id=e.source_id
                 WHERE s.source_key=? AND e.external_id=? LIMIT ?
             """
+            )
             params = (provider, native, limit)
         else:
             # FTS5 query as a quoted phrase prevents accidental user syntax.
             phrase = '"' + query.replace('"', '""') + '"'
-            sql = base + """
+            sql = (
+                base
+                + """
                 JOIN anime_title_fts AS fts ON fts.adb_id=a.adb_id
                 WHERE anime_title_fts MATCH ? GROUP BY a.anime_id LIMIT ?
             """
+            )
             params = (phrase, limit)
             records = conn.execute(sql, params).fetchall()
             if not records:
-                sql = base + """
+                sql = (
+                    base
+                    + """
                     JOIN anime_titles AS t2 ON t2.anime_id=a.anime_id
                     WHERE t2.value LIKE ? GROUP BY a.anime_id LIMIT ?
                 """
-                params = ("%" + query.replace("%", "\\%").replace("_", "\\_") + "%", limit)
+                )
+                params = (
+                    "%" + query.replace("%", "\\%").replace("_", "\\_") + "%",
+                    limit,
+                )
                 records = conn.execute(sql, params).fetchall()
             return [dict(r) for r in records]
         return [dict(row) for row in conn.execute(sql, params)]

@@ -23,6 +23,8 @@ class IdentityTests(unittest.TestCase):
             self.assertEqual(reload.next_id, 3)
             with self.assertRaises(ValueError):
                 reload.assign(120, {"shikimori": "22"})
+            with self.assertRaises(ValueError):
+                reload.assign(122, {"anilist": "99"})
             reload.save(path)
             self.assertEqual(json.loads(path.read_text())["next_id"], 3)
 

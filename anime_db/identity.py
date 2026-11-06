@@ -49,6 +49,14 @@ class IdentityRegistry:
             adb_id = self.next_id
             self.next_id += 1
         if amdb_id is not None:
+            # Distinct public AMDB identities must not silently collapse
+            # because a single upstream ID is duplicated or stale.
+            for known_anchor, known_adb in self.by_amdb.items():
+                if known_adb == adb_id and known_anchor != str(amdb_id):
+                    raise ValueError(
+                        f"ADB {adb_id} already links to AMDB {known_anchor}; "
+                        f"refusing unreviewed AMDB {amdb_id}"
+                    )
             self.by_amdb[str(amdb_id)] = adb_id
         for source, external_id in external_ids.items():
             key = self.key(source, external_id)

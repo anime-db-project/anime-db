@@ -16,6 +16,7 @@ from anime_db.identity import IdentityRegistry
 from anime_db.mapping import Candidate
 from anime_db.providers import SOURCES, RateGate, fetch_one, load_policies
 
+
 def stamp() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -28,7 +29,9 @@ def snapshot_path(state_dir: Path, source: str, external_id: str) -> Path:
 
 def write_snapshot(path: Path, record: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = json.dumps(record, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    payload = json.dumps(
+        record, sort_keys=True, ensure_ascii=False, separators=(",", ":")
+    )
     temp = path.with_suffix(".tmp")
     temp.write_bytes(zlib.compress(payload.encode("utf-8"), level=9))
     temp.replace(path)
@@ -51,7 +54,9 @@ def crawl(
     owns_client = client is None
     if client is None:
         client = httpx.Client(
-            headers={"User-Agent": "anime-db/0.1 (+https://github.com/anime-db-project/anime-db)"},
+            headers={
+                "User-Agent": "anime-db/0.1 (+https://github.com/anime-db-project/anime-db)"
+            },
             follow_redirects=False,
         )
     report = {"started_at": stamp(), "sources": {}, "requests": [], "phase": "test"}
@@ -82,27 +87,38 @@ def crawl(
                 data, status, error = fetch_one(
                     source, external_id, policy, budget, gate, client
                 )
-                report["requests"].append({
-                    "source": source, "id": external_id, "status": status,
-                    "error": error, "elapsed_ms": int((time.monotonic() - start) * 1000),
-                    "used_requests": initial_budget - budget[0], "at": stamp(),
-                })
+                report["requests"].append(
+                    {
+                        "source": source,
+                        "id": external_id,
+                        "status": status,
+                        "error": error,
+                        "elapsed_ms": int((time.monotonic() - start) * 1000),
+                        "used_requests": initial_budget - budget[0],
+                        "at": stamp(),
+                    }
+                )
                 if data is not None:
                     try:
-                        adb_id = registry.assign(candidate.amdb_id, candidate.external_ids)
+                        adb_id = registry.assign(
+                            candidate.amdb_id, candidate.external_ids
+                        )
                     except ValueError as exc:
                         errors += 1
                         report["requests"][-1]["error"] = "ambiguous_identity"
                         continue
-                    write_snapshot(path, {
-                        "source": source,
-                        "source_external_id": external_id,
-                        "amdb_id": candidate.amdb_id,
-                        "adb_id": adb_id,
-                        "external_ids": candidate.external_ids,
-                        "payload": data,
-                        "fetched_at": stamp(),
-                    })
+                    write_snapshot(
+                        path,
+                        {
+                            "source": source,
+                            "source_external_id": external_id,
+                            "amdb_id": candidate.amdb_id,
+                            "adb_id": adb_id,
+                            "external_ids": candidate.external_ids,
+                            "payload": data,
+                            "fetched_at": stamp(),
+                        },
+                    )
                     registry.save(state_dir / "registry.json")
                     found += 1
                 elif status in (404, 410):
@@ -114,8 +130,11 @@ def crawl(
                         break
             report["sources"][source] = {
                 "status": "complete" if errors == 0 else "partial",
-                "attempted": cap - budget[0], "found": found,
-                "cached": skipped, "missing": missing, "errors": errors,
+                "attempted": cap - budget[0],
+                "found": found,
+                "cached": skipped,
+                "missing": missing,
+                "errors": errors,
             }
     finally:
         if owns_client:
