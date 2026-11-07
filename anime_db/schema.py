@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 LOCALES = ("ru", "en", "ja", "de", "es", "fr", "it")
 SOURCES = ("shikimori", "kitsu", "anilist")
 
@@ -61,12 +61,12 @@ CREATE TABLE source_catalog (
 );
 CREATE TABLE anime_external_ids (
     anime_id INTEGER NOT NULL REFERENCES anime(anime_id),
-    source_id INTEGER NOT NULL REFERENCES source_catalog(source_id),
+    provider TEXT NOT NULL,
     external_id TEXT NOT NULL,
-    PRIMARY KEY (source_id, external_id),
-    UNIQUE(anime_id, source_id, external_id)
+    PRIMARY KEY (provider, external_id),
+    UNIQUE(anime_id, provider, external_id)
 ) WITHOUT ROWID;
-CREATE INDEX ext_by_title ON anime_external_ids(anime_id, source_id);
+CREATE INDEX ext_by_title ON anime_external_ids(anime_id, provider);
 
 CREATE TABLE anime_sources (
     anime_id INTEGER NOT NULL REFERENCES anime(anime_id),
@@ -106,6 +106,18 @@ CREATE TABLE anime_genres (
     source_id INTEGER NOT NULL REFERENCES source_catalog(source_id),
     genre TEXT NOT NULL,
     PRIMARY KEY(anime_id, source_id, genre)
+) WITHOUT ROWID;
+
+CREATE TABLE anime_taxonomy_names (
+    anime_id INTEGER NOT NULL REFERENCES anime(anime_id),
+    source_id INTEGER NOT NULL REFERENCES source_catalog(source_id),
+    source_term_id TEXT NOT NULL,
+    term_kind TEXT NOT NULL,
+    locale TEXT NOT NULL,
+    source_field TEXT NOT NULL,
+    name TEXT NOT NULL,
+    PRIMARY KEY(anime_id,source_id,source_term_id,term_kind,
+                locale,source_field,name)
 ) WITHOUT ROWID;
 
 CREATE TABLE anime_tags (
@@ -201,6 +213,139 @@ CREATE TABLE anime_source_attributes (
     field_path TEXT NOT NULL,
     value_json TEXT NOT NULL,
     PRIMARY KEY(anime_id, source_id, field_path)
+) WITHOUT ROWID;
+
+-- Separate typed categories: never overload 'format' with an age rating.
+CREATE TABLE anime_age_ratings (
+    anime_id INTEGER NOT NULL REFERENCES anime(anime_id),
+    source_id INTEGER NOT NULL REFERENCES source_catalog(source_id),
+    rating TEXT NOT NULL,
+    guide TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY(anime_id,source_id,rating)
+) WITHOUT ROWID;
+
+CREATE TABLE anime_origins (
+    anime_id INTEGER NOT NULL REFERENCES anime(anime_id),
+    source_id INTEGER NOT NULL REFERENCES source_catalog(source_id),
+    origin_type TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY(anime_id,source_id,origin_type,value)
+) WITHOUT ROWID;
+
+CREATE TABLE anime_release_seasons (
+    anime_id INTEGER NOT NULL REFERENCES anime(anime_id),
+    source_id INTEGER NOT NULL REFERENCES source_catalog(source_id),
+    season TEXT NOT NULL,
+    year INTEGER NOT NULL,
+    PRIMARY KEY(anime_id,source_id,season,year)
+) WITHOUT ROWID;
+
+CREATE TABLE anime_flags (
+    anime_id INTEGER NOT NULL REFERENCES anime(anime_id),
+    source_id INTEGER NOT NULL REFERENCES source_catalog(source_id),
+    flag TEXT NOT NULL,
+    value INTEGER NOT NULL CHECK(value IN (0,1)),
+    PRIMARY KEY(anime_id,source_id,flag)
+) WITHOUT ROWID;
+
+CREATE TABLE anime_rankings (
+    anime_id INTEGER NOT NULL REFERENCES anime(anime_id),
+    source_id INTEGER NOT NULL REFERENCES source_catalog(source_id),
+    ranking_type TEXT NOT NULL,
+    ranking_format TEXT NOT NULL DEFAULT '',
+    ranking_context TEXT NOT NULL DEFAULT '',
+    season TEXT NOT NULL DEFAULT '',
+    year INTEGER NOT NULL DEFAULT 0,
+    all_time INTEGER NOT NULL CHECK(all_time IN (0,1)),
+    position INTEGER NOT NULL,
+    PRIMARY KEY(anime_id,source_id,ranking_type,ranking_format,
+                ranking_context,season,year,all_time)
+) WITHOUT ROWID;
+
+CREATE TABLE anime_airing (
+    anime_id INTEGER NOT NULL REFERENCES anime(anime_id),
+    source_id INTEGER NOT NULL REFERENCES source_catalog(source_id),
+    event_type TEXT NOT NULL,
+    episode_number INTEGER NOT NULL DEFAULT 0,
+    airs_at TEXT NOT NULL,
+    PRIMARY KEY(anime_id,source_id,event_type,episode_number)
+) WITHOUT ROWID;
+
+CREATE TABLE anime_rating_distributions (
+    anime_id INTEGER NOT NULL REFERENCES anime(anime_id),
+    source_id INTEGER NOT NULL REFERENCES source_catalog(source_id),
+    distribution_type TEXT NOT NULL,
+    bucket TEXT NOT NULL,
+    sample_count INTEGER NOT NULL CHECK(sample_count>=0),
+    PRIMARY KEY(anime_id,source_id,distribution_type,bucket)
+) WITHOUT ROWID;
+
+CREATE TABLE anime_character_names (
+    anime_id INTEGER NOT NULL REFERENCES anime(anime_id),
+    source_id INTEGER NOT NULL REFERENCES source_catalog(source_id),
+    character_external_id TEXT NOT NULL,
+    locale TEXT NOT NULL,
+    name_type TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY(anime_id,source_id,character_external_id,locale,name_type,value)
+) WITHOUT ROWID;
+
+CREATE TABLE anime_staff_names (
+    anime_id INTEGER NOT NULL REFERENCES anime(anime_id),
+    source_id INTEGER NOT NULL REFERENCES source_catalog(source_id),
+    person_external_id TEXT NOT NULL,
+    locale TEXT NOT NULL,
+    name_type TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY(anime_id,source_id,person_external_id,locale,name_type,value)
+) WITHOUT ROWID;
+
+CREATE TABLE anime_voice_actors (
+    anime_id INTEGER NOT NULL REFERENCES anime(anime_id),
+    source_id INTEGER NOT NULL REFERENCES source_catalog(source_id),
+    character_external_id TEXT NOT NULL,
+    person_external_id TEXT NOT NULL,
+    person_name TEXT NOT NULL,
+    language TEXT NOT NULL DEFAULT 'und',
+    PRIMARY KEY(anime_id,source_id,character_external_id,person_external_id,language)
+) WITHOUT ROWID;
+
+CREATE TABLE anime_credits (
+    anime_id INTEGER NOT NULL REFERENCES anime(anime_id),
+    source_id INTEGER NOT NULL REFERENCES source_catalog(source_id),
+    credit_type TEXT NOT NULL,
+    name TEXT NOT NULL,
+    PRIMARY KEY(anime_id,source_id,credit_type,name)
+) WITHOUT ROWID;
+
+CREATE TABLE anime_related_resources (
+    anime_id INTEGER NOT NULL REFERENCES anime(anime_id),
+    source_id INTEGER NOT NULL REFERENCES source_catalog(source_id),
+    relationship_type TEXT NOT NULL,
+    target_type TEXT NOT NULL DEFAULT '',
+    target_external_id TEXT NOT NULL DEFAULT '',
+    related_url TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY(anime_id,source_id,relationship_type,target_type,
+                target_external_id,related_url)
+) WITHOUT ROWID;
+
+CREATE TABLE anime_collection_coverage (
+    anime_id INTEGER NOT NULL REFERENCES anime(anime_id),
+    source_id INTEGER NOT NULL REFERENCES source_catalog(source_id),
+    collection_type TEXT NOT NULL,
+    fetch_state TEXT NOT NULL CHECK(fetch_state IN ('partial','complete','linked_only','unknown')),
+    fetched_count INTEGER NOT NULL DEFAULT 0 CHECK(fetched_count >= 0),
+    has_next_page INTEGER CHECK(has_next_page IN (0,1)),
+    PRIMARY KEY(anime_id,source_id,collection_type)
+) WITHOUT ROWID;
+
+CREATE TABLE anime_streaming_episodes (
+    anime_id INTEGER NOT NULL REFERENCES anime(anime_id),
+    source_id INTEGER NOT NULL REFERENCES source_catalog(source_id),
+    title TEXT NOT NULL,
+    url TEXT NOT NULL,
+    thumbnail_url TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY(anime_id,source_id,title,url)
 ) WITHOUT ROWID;
 
 CREATE TABLE aggregation_summary (

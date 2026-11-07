@@ -52,7 +52,7 @@ jobs:
         run: |
           anime-db run --mapping-db inputs/mappings.db \
             --state-dir .state --output-dir artifacts \
-            --max-requests 10 --candidates 80
+            --max-requests 10 --candidates 0
       - name: Verify artifact checksums and database integrity
         shell: bash
         run: |
@@ -85,7 +85,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch --no-tags origin state:refs/remotes/origin/state
           git switch -C state origin/state
-          git add -f .state/registry.json .state/last-crawl-report.json
+          git add -f .state/registry.json .state/amdb-redirects.json .state/last-crawl-report.json
           if [[ -d .state/snapshots ]]; then
             git add -f .state/snapshots
           fi
@@ -108,7 +108,12 @@ jobs:
           print(f"- Anime: {m['anime']}")
           print(f"- Snapshots: {m['snapshots']}")
           print(f"- Conflicts: {m['conflicts']}")
-          print(f"- SQLite outputs: {len(m['files'])}")
+          print(f"- External ID namespaces: {m['external_provider_namespaces']}")
+          print(f"- Characters: {m['table_counts']['anime_characters']}")
+          print(f"- Staff: {m['table_counts']['anime_staff']}")
+          print(f"- SQLite outputs: {len(m['files'])} (+ Zstandard copies)")
+          print(f"- Build time: {m['build_seconds']} sec")
+          print('- Per-source hard cap: 10 HTTP requests including refresh')
           print('- Releases: disabled')
           PY
           fi

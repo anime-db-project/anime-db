@@ -13,7 +13,9 @@
     ],
     "retry_429_wait_seconds": 15,
     "max_429_wait_seconds": 45,
-    "timeout_seconds": 18
+    "timeout_seconds": 18,
+    "refresh_after_days": 14,
+    "max_refresh_requests": 2
   },
   "kitsu": {
     "enabled": true,
@@ -27,7 +29,9 @@
     ],
     "retry_429_wait_seconds": 15,
     "max_429_wait_seconds": 45,
-    "timeout_seconds": 18
+    "timeout_seconds": 18,
+    "refresh_after_days": 14,
+    "max_refresh_requests": 2
   },
   "anilist": {
     "enabled": true,
@@ -41,6 +45,8 @@
     ],
     "retry_429_wait_seconds": 20,
     "max_429_wait_seconds": 45,
-    "timeout_seconds": 18
+    "timeout_seconds": 18,
+    "refresh_after_days": 14,
+    "max_refresh_requests": 2
   }
 }

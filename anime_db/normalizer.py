@@ -74,28 +74,42 @@ def ingest_record(conn: sqlite3.Connection, item: dict) -> int:
             values,
         )
 
-    for provider, external_id in item.get("external_ids", {}).items():
-        if provider not in SOURCES and provider != "mal":
-            # Foreign provider IDs not registered in this distribution are
-            # kept in the complete source attribute record.
+    external_refs = dict(item.get("external_ids") or {})
+    external_refs[source] = str(item["source_external_id"])
+    for provider, external_id in external_refs.items():
+        if not provider or not str(external_id).strip():
             continue
-        key_id = SOURCES.index(provider) + 1 if provider in SOURCES else 4
+        # Every provider in the AMDB anchor's mapping is copied as a compact
+        # (provider, external_id) reference, never as a mapping graph.
         conn.execute(
-            "INSERT OR IGNORE INTO anime_external_ids(anime_id,source_id,external_id) "
+            "INSERT OR IGNORE INTO anime_external_ids(anime_id,provider,external_id) "
             "VALUES(?,?,?)",
-            (anime_id, key_id, str(external_id)),
+            (anime_id, str(provider), str(external_id)),
         )
+        owner = conn.execute(
+            "SELECT anime_id FROM anime_external_ids "
+            "WHERE provider=? AND external_id=?",
+            (str(provider), str(external_id)),
+        ).fetchone()
+        if owner is None or int(owner[0]) != anime_id:
+            raise ValueError(
+                f"Conflicting external identity {provider}:{external_id} "
+                "belongs to another ADB record"
+            )
 
     def title(locale: str, role: str, field: str, value: Any) -> None:
-        val = plain(value)
-        if val:
-            insert(
-                "anime_titles",
-                locale=normalized_locale(locale),
-                title_type=role,
-                source_field=field,
-                value=val,
-            )
+        # Several Shikimori localized fields are arrays, not scalar strings.
+        # Never stringify the whole list as one title.
+        options = value if isinstance(value, list) else [value]
+        for option in options:
+            if isinstance(option, str) and option.strip():
+                insert(
+                    "anime_titles",
+                    locale=normalized_locale(locale),
+                    title_type=role,
+                    source_field=field,
+                    value=option.strip(),
+                )
 
     def description(locale: str, role: str, field: str, value: Any) -> None:
         val = plain(value)
@@ -161,9 +175,42 @@ def ingest_record(conn: sqlite3.Connection, item: dict) -> int:
 
     def genres(items: Any) -> None:
         for node in items if isinstance(items, list) else []:
-            value = plain(node.get("name")) if isinstance(node, dict) else plain(node)
-            if value:
-                insert("anime_genres", genre=value)
+            if isinstance(node, dict):
+                name = plain(node.get("name"))
+                term_kind = plain(node.get("kind")) or "genre"
+                identifier = plain(node.get("id")) or name
+                if name:
+                    if term_kind == "genre":
+                        insert("anime_genres", genre=name)
+                    else:
+                        insert(
+                            "anime_tags",
+                            tag=name,
+                            rank=None,
+                            is_spoiler=None,
+                        )
+                    insert(
+                        "anime_taxonomy_names",
+                        source_term_id=identifier,
+                        term_kind=term_kind,
+                        locale="en",
+                        source_field="name",
+                        name=name,
+                    )
+                translated = plain(node.get("russian"))
+                if translated:
+                    insert(
+                        "anime_taxonomy_names",
+                        source_term_id=identifier,
+                        term_kind=term_kind,
+                        locale="ru",
+                        source_field="russian",
+                        name=translated,
+                    )
+            else:
+                name = plain(node)
+                if name:
+                    insert("anime_genres", genre=name)
 
     def image(image_type: str, value: Any) -> None:
         if isinstance(value, dict):
@@ -245,7 +292,6 @@ def ingest_record(conn: sqlite3.Connection, item: dict) -> int:
         date("aired_end", get("released_on"))
         score("average", get("score"), 10)
         metric("scored_by", get("scored_by"))
-        enum("anime_formats", "format", get("rating"))
         genres(get("genres"))
         for node in get("studios") or []:
             if isinstance(node, dict):
@@ -387,7 +433,7 @@ def ingest_record(conn: sqlite3.Connection, item: dict) -> int:
     # Keep the provider's remaining attributes in the full main database,
     # even when no semantic adapter for them exists yet.
     for field, value in attrs.items():
-        if field not in used:
+        if field not in used or isinstance(value, (list, dict)):
             insert(
                 "anime_source_attributes", field_path=field, value_json=compact(value)
             )
@@ -399,4 +445,8 @@ def ingest_record(conn: sqlite3.Connection, item: dict) -> int:
                     field_path="resource." + field,
                     value_json=compact(value),
                 )
+    # Enrich nested source-specific data without discarding original fields.
+    from anime_db.enrichment import enrich_record
+
+    enrich_record(conn, item, anime_id)
     return anime_id

@@ -26,6 +26,7 @@ CATALOG_TABLES = (
     "anime_descriptions",
     "anime_genres",
     "anime_tags",
+    "anime_taxonomy_names",
     "anime_studios",
     "anime_characters",
     "anime_staff",
@@ -35,6 +36,20 @@ CATALOG_TABLES = (
     "anime_videos",
     "anime_links",
     "anime_source_attributes",
+    "anime_age_ratings",
+    "anime_origins",
+    "anime_release_seasons",
+    "anime_flags",
+    "anime_rankings",
+    "anime_airing",
+    "anime_rating_distributions",
+    "anime_character_names",
+    "anime_staff_names",
+    "anime_voice_actors",
+    "anime_credits",
+    "anime_related_resources",
+    "anime_streaming_episodes",
+    "anime_collection_coverage",
     *SCALAR_FIELDS,
 )
 
@@ -79,6 +94,24 @@ def populate_search(conn: sqlite3.Connection) -> None:
         "INSERT INTO anime_title_fts(value,locale,adb_id) "
         "SELECT t.value,t.locale,a.adb_id FROM anime_titles AS t "
         "JOIN anime AS a ON a.anime_id=t.anime_id"
+    )
+
+
+def resolve_relation_targets(conn: sqlite3.Connection) -> None:
+    """Resolve only explicit provider ID links in the local catalog."""
+    conn.execute(
+        """
+        UPDATE anime_relations
+        SET target_adb_id = (
+            SELECT target.adb_id
+            FROM anime_external_ids AS external
+            JOIN anime AS target ON target.anime_id=external.anime_id
+            WHERE external.provider='anilist'
+              AND external.external_id=anime_relations.target_external_id
+        )
+        WHERE source_id=(SELECT source_id FROM source_catalog WHERE source_key='anilist')
+          AND target_adb_id IS NULL
+        """
     )
 
 
@@ -183,15 +216,25 @@ def _clone_catalog(
                 query += " AND item.source_id=?"
                 params = (sid,)
             if locale is not None:
-                # Language packages contain complete identity & source reference,
-                # but no arbitrary-language descriptions or unrelated metadata.
-                if table in ("anime_titles", "anime_descriptions"):
+                # Language packages retain all language-independent facts,
+                # relationships, ratings and source references. Only localized
+                # text tables are filtered. Large raw provider payloads may
+                # mix languages, so exclude them from language distributions.
+                if table in (
+                    "anime_titles",
+                    "anime_descriptions",
+                    "anime_character_names",
+                    "anime_staff_names",
+                    "anime_taxonomy_names",
+                ):
                     query += " AND item.locale IN (?, 'und')"
                     params = (locale,)
-                elif table not in ("anime_sources",):
+                elif table == "anime_source_attributes":
                     continue
             target.execute(query, params)
-        if locale is None and sid is None:
+        if sid is None:
+            # Locale filtering does not affect source-independent values,
+            # so language packages can safely include aggregate selections.
             target.execute(
                 "INSERT INTO aggregation_summary SELECT * FROM original.aggregation_summary"
             )
@@ -211,6 +254,19 @@ def build_from_state(state_dir: Path, output_dir: Path) -> dict:
     with closing(open_db(full_path)) as full, closing(open_db(tech_path)) as tech:
         create_catalog(full, role="full")
         create_technical(tech)
+        redirects_file = state_dir / "amdb-redirects.json"
+        if redirects_file.is_file():
+            redirects = json.loads(redirects_file.read_text("utf-8"))
+            for old, canonical in sorted(
+                redirects.items(), key=lambda item: int(item[0])
+            ):
+                old, canonical = int(old), int(canonical)
+                if old <= 0 or canonical <= 0 or old == canonical:
+                    raise ValueError("Invalid AMDB anchor redirect")
+                full.execute(
+                    "INSERT INTO amdb_redirects(old_amdb_id,new_amdb_id) VALUES (?,?)",
+                    (old, canonical),
+                )
         snapshots = sorted((state_dir / "snapshots").glob("*/*.json.zlib"))
         for path in snapshots:
             item = read_snapshot(path)
@@ -253,6 +309,7 @@ def build_from_state(state_dir: Path, output_dir: Path) -> dict:
                         event["at"],
                     ),
                 )
+        resolve_relation_targets(full)
         aggregate(full, tech)
         populate_search(full)
         full.commit()
@@ -295,6 +352,37 @@ def build_from_state(state_dir: Path, output_dir: Path) -> dict:
             "zst_bytes": compressed.stat().st_size,
             "zst_sha256": hash_file(compressed),
         }
+    # Publish inspectable runtime coverage with each artifact, including
+    # category sizes and source/language counts; this is derived from the
+    # finished DB, never guessed from the mapping inventory.
+    with sqlite3.connect(full_path) as runtime:
+        table_names = sorted(
+            set(CATALOG_TABLES)
+            | {"anime", "anime_external_ids", "aggregation_summary", "amdb_redirects"}
+        )
+        table_counts = {
+            name: int(runtime.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0])
+            for name in table_names
+        }
+        source_coverage = {
+            str(source): int(count)
+            for source, count in runtime.execute(
+                "SELECT c.source_key, COUNT(*) FROM anime_sources AS a "
+                "JOIN source_catalog AS c ON c.source_id=a.source_id "
+                "GROUP BY c.source_key ORDER BY c.source_key"
+            )
+        }
+        title_locales = {
+            str(locale): int(count)
+            for locale, count in runtime.execute(
+                "SELECT locale, COUNT(*) FROM anime_titles GROUP BY locale ORDER BY locale"
+            )
+        }
+        external_provider_count = int(
+            runtime.execute(
+                "SELECT COUNT(DISTINCT provider) FROM anime_external_ids"
+            ).fetchone()[0]
+        )
     manifest = {
         "schema_version": SCHEMA_VERSION,
         "release_enabled": False,
@@ -304,6 +392,10 @@ def build_from_state(state_dir: Path, output_dir: Path) -> dict:
         "sources": list(SOURCES),
         "languages": list(LOCALES),
         "build_seconds": round(time.perf_counter() - started, 3),
+        "table_counts": table_counts,
+        "source_coverage": source_coverage,
+        "title_locales": title_locales,
+        "external_provider_namespaces": external_provider_count,
         "files": entries,
     }
     (output_dir / "manifest.json").write_text(

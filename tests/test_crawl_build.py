@@ -92,6 +92,17 @@ class CrawlBuildTests(unittest.TestCase):
             manifest = build_from_state(root / "state", root / "output")
             self.assertEqual(manifest["anime"], 1)
             self.assertEqual(manifest["snapshots"], 3)
+            self.assertEqual(
+                manifest["source_coverage"],
+                {
+                    "anilist": 1,
+                    "kitsu": 1,
+                    "shikimori": 1,
+                },
+            )
+            self.assertEqual(manifest["external_provider_namespaces"], 4)
+            self.assertGreater(manifest["table_counts"]["anime_titles"], 0)
+            self.assertGreaterEqual(manifest["title_locales"]["ru"], 1)
             self.assertGreaterEqual(manifest["conflicts"], 1)
             self.assertEqual(len(manifest["files"]), 13)
             full = root / "output" / "anime.db"
@@ -133,6 +144,29 @@ class CrawlBuildTests(unittest.TestCase):
                 self.assertEqual(
                     conn.execute(
                         "SELECT COUNT(*) FROM anime_titles WHERE locale='ja'"
+                    ).fetchone()[0],
+                    0,
+                )
+            with sqlite3.connect(root / "output" / "anime.ru.db") as conn:
+                self.assertEqual(
+                    conn.execute(
+                        "SELECT COUNT(*) FROM anime_episode_counts"
+                    ).fetchone()[0],
+                    4,
+                )
+                self.assertEqual(
+                    conn.execute("SELECT COUNT(*) FROM anime_genres").fetchone()[0],
+                    2,
+                )
+                self.assertGreater(
+                    conn.execute("SELECT COUNT(*) FROM aggregation_summary").fetchone()[
+                        0
+                    ],
+                    0,
+                )
+                self.assertEqual(
+                    conn.execute(
+                        "SELECT COUNT(*) FROM anime_source_attributes"
                     ).fetchone()[0],
                     0,
                 )

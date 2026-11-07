@@ -27,24 +27,30 @@ def search(path: Path, query: str, *, limit: int = 20) -> list[dict]:
         """
         params: tuple = ()
         if query.startswith("adb:") and query[4:].isdigit():
-            sql = base + " WHERE a.adb_id=? LIMIT ?"
-            params = (int(query[4:]), limit)
+            sql = base + (
+                " WHERE a.adb_id=? OR a.adb_id=("
+                "SELECT new_adb_id FROM id_redirects WHERE old_adb_id=?) LIMIT ?"
+            )
+            params = (int(query[4:]), int(query[4:]), limit)
         elif query.startswith("amdb:") and query[5:].isdigit():
-            sql = base + " WHERE a.amdb_id=? LIMIT ?"
-            params = (int(query[5:]), limit)
-        elif ":" in query and query.split(":", 1)[0] in (
-            "shikimori",
-            "kitsu",
-            "anilist",
-            "mal",
+            sql = base + (
+                " WHERE a.amdb_id=? OR a.amdb_id=("
+                "SELECT new_amdb_id FROM amdb_redirects WHERE old_amdb_id=?) LIMIT ?"
+            )
+            params = (int(query[5:]), int(query[5:]), limit)
+        elif (
+            ":" in query
+            and conn.execute(
+                "SELECT 1 FROM anime_external_ids WHERE provider=? LIMIT 1",
+                (query.split(":", 1)[0].strip(),),
+            ).fetchone()
         ):
             provider, native = query.split(":", 1)
             sql = (
                 base
                 + """
                 JOIN anime_external_ids AS e ON e.anime_id=a.anime_id
-                JOIN source_catalog AS s ON s.source_id=e.source_id
-                WHERE s.source_key=? AND e.external_id=? LIMIT ?
+                WHERE e.provider=? AND e.external_id=? LIMIT ?
             """
             )
             params = (provider, native, limit)
@@ -59,13 +65,20 @@ def search(path: Path, query: str, *, limit: int = 20) -> list[dict]:
             """
             )
             params = (phrase, limit)
-            records = conn.execute(sql, params).fetchall()
+            # SQL LIKE wildcards are literal user text, not search syntax.
+            # FTS5 strips these punctuation marks and can overmatch, so
+            # do not use its results for names containing % or _.
+            records = (
+                conn.execute(sql, params).fetchall()
+                if "%" not in query and "_" not in query
+                else []
+            )
             if not records:
                 sql = (
                     base
                     + """
                     JOIN anime_titles AS t2 ON t2.anime_id=a.anime_id
-                    WHERE t2.value LIKE ? GROUP BY a.anime_id LIMIT ?
+                    WHERE t2.value LIKE ? ESCAPE '\\' GROUP BY a.anime_id LIMIT ?
                 """
                 )
                 params = (

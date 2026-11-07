@@ -27,17 +27,31 @@ query AnimeDB($id: Int!) {
     hashtag isAdult isLicensed updatedAt averageScore meanScore
     popularity trending favourites genres
     tags { id name description rank isMediaSpoiler isGeneralSpoiler }
-    studios(isMain: false) { edges { isMain node { id name siteUrl } } }
-    relations { edges { relationType node { id type title { romaji } } } }
+    studios(isMain: false) {
+      pageInfo { hasNextPage }
+      edges { isMain node { id name siteUrl } }
+    }
+    relations {
+      pageInfo { hasNextPage }
+      edges { relationType node { id type title { romaji } } }
+    }
     characters(page: 1, perPage: 25) {
-      edges { role node { id name { full native } image { large } } }
+      pageInfo { hasNextPage }
+      edges {
+        role
+        voiceActors { id name { full native } }
+        node { id name { full native } image { large } }
+      }
     }
     staff(page: 1, perPage: 25) {
+      pageInfo { hasNextPage }
       edges { role node { id name { full native } image { large } } }
     }
     coverImage { extraLarge large medium color }
     bannerImage trailer { id site thumbnail }
     externalLinks { id url site type language }
+    streamingEpisodes { title thumbnail url }
+    stats { scoreDistribution { score amount } statusDistribution { status amount } }
     nextAiringEpisode { id airingAt timeUntilAiring episode }
     rankings { rank type format year season allTime context }
   }
@@ -57,6 +71,8 @@ class SourcePolicy:
     max_429_wait_seconds: int
     timeout_seconds: float
     enabled: bool
+    refresh_after_days: int
+    max_refresh_requests: int
 
     @classmethod
     def from_config(cls, source: str, row: dict, cap: int) -> "SourcePolicy":
@@ -72,6 +88,8 @@ class SourcePolicy:
             max_429_wait_seconds=int(row["max_429_wait_seconds"]),
             timeout_seconds=float(row["timeout_seconds"]),
             enabled=row["enabled"],
+            refresh_after_days=int(row.get("refresh_after_days", 14)),
+            max_refresh_requests=int(row.get("max_refresh_requests", 2)),
         )
         if not isinstance(policy.enabled, bool):
             raise ValueError(f"{source}: enabled must be boolean")
@@ -89,6 +107,10 @@ class SourcePolicy:
             raise ValueError(f"{source}: retry window invalid")
         if not 1 <= policy.timeout_seconds <= 60:
             raise ValueError(f"{source}: invalid timeout")
+        if not 1 <= policy.refresh_after_days <= 365:
+            raise ValueError(f"{source}: invalid cache TTL")
+        if not 0 <= policy.max_refresh_requests <= policy.max_requests:
+            raise ValueError(f"{source}: invalid refresh quota")
         return policy
 
 
